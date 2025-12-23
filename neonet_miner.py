@@ -34,7 +34,7 @@ from dataclasses import dataclass, field, asdict
 from enum import Enum
 
 BOOTSTRAP_SERVERS = [
-    "https://neonet-ai-blockchain-neonetainetwork.replit.app"
+    "https://neonetainetwork.com"
 ]
 
 @dataclass
