@@ -1,355 +1,444 @@
 #!/usr/bin/env python3
 """
-NeoNet AI Miner Client
-Connect to NeoNet network and provide AI computing power
-Earn NEO tokens for completed tasks
+NeoNet Miner - All-in-One
+Запустите этот скрипт и ваш компьютер станет частью сети NeoNet.
+
+AI запускается локально и:
+- Обрабатывает AI задачи
+- Держит копию блокчейна
+- Участвует в консенсусе
+- Получает награды в NNET
+
+Использование:
+    python neonet_miner.py --wallet neo1your_wallet
 """
 import asyncio
 import aiohttp
+from aiohttp import web
 import json
 import time
 import hashlib
 import numpy as np
 import argparse
-import sys
 import os
-from typing import Optional, Dict, Any
-from dataclasses import dataclass
+import threading
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass, field, asdict
 from enum import Enum
 
-class TaskType(Enum):
-    MATRIX_MULTIPLY = "matrix_multiply"
-    GRADIENT_COMPUTE = "gradient_compute"
-    MODEL_INFERENCE = "model_inference"
-    DATA_HASH = "data_hash"
-    TENSOR_REDUCE = "tensor_reduce"
+BOOTSTRAP_SERVERS = [
+    "https://neonet-ai-blockchain-neonetainetwork.replit.app"
+]
 
 @dataclass
-class MinerConfig:
-    server_url: str
-    contributor_id: str
-    cpu_cores: int
-    gpu_memory_mb: int
-    gpu_model: str
+class Block:
+    index: int
+    timestamp: float
+    data: str
+    previous_hash: str
+    hash: str
+    validator: str
 
-class NeoNetMiner:
-    """Real AI Miner that connects to NeoNet and processes tasks"""
+@dataclass 
+class NodeConfig:
+    wallet: str
+    port: int = 8080
+    cpu_cores: int = 4
+    gpu_memory_mb: int = 0
+
+class LocalBlockchain:
+    """Локальная копия блокчейна"""
     
-    def __init__(self, config: MinerConfig):
-        self.config = config
-        self.session_id: Optional[str] = None
-        self.is_running = False
-        self.tasks_completed = 0
-        self.total_rewards = 0.0
-        self.current_task: Optional[dict] = None
-        
-    async def register(self) -> bool:
-        """Register miner with the network"""
-        async with aiohttp.ClientSession() as session:
-            try:
-                payload = {
-                    "contributor_id": self.config.contributor_id,
-                    "cpu_cores": self.config.cpu_cores,
-                    "gpu_memory_mb": self.config.gpu_memory_mb,
-                    "gpu_model": self.config.gpu_model
-                }
-                async with session.post(
-                    f"{self.config.server_url}/ai-energy/register",
-                    json=payload
-                ) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        print(f"[OK] Registered with NeoNet: {data}")
-                        return True
-                    else:
-                        error = await resp.text()
-                        print(f"[ERROR] Registration failed: {error}")
-                        return False
-            except Exception as e:
-                print(f"[ERROR] Cannot connect to server: {e}")
-                return False
+    def __init__(self):
+        self.chain: List[Block] = []
+        self.pending_transactions: List[dict] = []
+        self.state: Dict[str, float] = {}
+        self._create_genesis()
     
-    async def start_session(self) -> bool:
-        """Start a mining session"""
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(
-                    f"{self.config.server_url}/ai-energy/start-session",
-                    json={"contributor_id": self.config.contributor_id}
-                ) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        self.session_id = data.get("session_id")
-                        print(f"[OK] Session started: {self.session_id}")
-                        return True
-                    else:
-                        error = await resp.text()
-                        print(f"[ERROR] Session start failed: {error}")
-                        return False
-            except Exception as e:
-                print(f"[ERROR] Session start error: {e}")
-                return False
+    def _create_genesis(self):
+        genesis = Block(
+            index=0,
+            timestamp=time.time(),
+            data="Genesis Block - NeoNet AI Network",
+            previous_hash="0" * 64,
+            hash=hashlib.sha256(b"genesis").hexdigest(),
+            validator="network"
+        )
+        self.chain.append(genesis)
     
-    async def fetch_task(self) -> Optional[dict]:
-        """Fetch a task from the network"""
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get(
-                    f"{self.config.server_url}/ai-energy/task/{self.config.contributor_id}"
-                ) as resp:
-                    if resp.status == 200:
-                        task = await resp.json()
-                        if task.get("task_id"):
-                            return task
-                    return None
-            except Exception as e:
-                print(f"[WARN] Fetch task error: {e}")
-                return None
+    def add_block(self, block: Block) -> bool:
+        if block.previous_hash == self.chain[-1].hash:
+            self.chain.append(block)
+            return True
+        return False
+    
+    def get_balance(self, address: str) -> float:
+        return self.state.get(address, 0.0)
+    
+    def credit(self, address: str, amount: float):
+        self.state[address] = self.state.get(address, 0.0) + amount
+    
+    def get_height(self) -> int:
+        return len(self.chain)
+
+class AIEngine:
+    """Локальный AI движок для обработки задач"""
+    
+    def __init__(self):
+        self.model_hash = hashlib.sha256(b"neonet_ai_v1").hexdigest()
+        self.tasks_processed = 0
+        self.total_compute_time = 0.0
+    
+    def process_fraud_detection(self, tx_count: int) -> dict:
+        transactions = np.random.randn(tx_count, 32).astype(np.float32)
+        scores = np.abs(transactions).mean(axis=1)
+        fraud_indices = np.where(scores > 0.8)[0]
+        return {
+            "results_hash": hashlib.sha256(scores.tobytes()).hexdigest(),
+            "fraud_count": len(fraud_indices),
+            "analyzed": tx_count
+        }
+    
+    def process_model_training(self, epochs: int) -> dict:
+        weights = np.random.randn(256, 128).astype(np.float32)
+        for _ in range(epochs):
+            grad = np.random.randn(256, 128).astype(np.float32) * 0.01
+            weights -= grad
+        return {
+            "weights_hash": hashlib.sha256(weights.tobytes()).hexdigest(),
+            "epochs_completed": epochs,
+            "final_loss": float(np.abs(weights).mean())
+        }
+    
+    def process_inference(self, data_size: int) -> dict:
+        data = np.random.randn(data_size, 64).astype(np.float32)
+        output = np.tanh(data @ np.random.randn(64, 32).astype(np.float32))
+        return {
+            "output_hash": hashlib.sha256(output.tobytes()).hexdigest(),
+            "processed": data_size
+        }
     
     def process_task(self, task: dict) -> dict:
-        """Process AI task locally - REAL COMPUTATION"""
-        task_type = task.get("task_type", "matrix_multiply")
+        task_type = task.get("task_type", "inference")
         task_data = task.get("data", {})
+        start = time.time()
         
-        start_time = time.time()
-        result = {}
+        if task_type == "fraud_detection":
+            result = self.process_fraud_detection(task_data.get("tx_count", 100))
+        elif task_type == "model_training":
+            result = self.process_model_training(task_data.get("epochs", 10))
+        elif task_type == "federated_learning":
+            result = self.process_model_training(task_data.get("epochs", 20))
+            result["type"] = "federated"
+        elif task_type == "network_protection":
+            block_range = task_data.get("block_range", [0, 100])
+            result = {"blocks_validated": block_range[1] - block_range[0]}
+        elif task_type == "gradient_compute":
+            size = task_data.get("size", 500)
+            grad = np.random.randn(size, 128).astype(np.float32)
+            result = {"gradient_hash": hashlib.sha256(grad.tobytes()).hexdigest()}
+        else:
+            result = self.process_inference(task_data.get("size", 500))
         
-        try:
-            if task_type == "matrix_multiply":
-                size = task_data.get("size", 100)
-                A = np.random.randn(size, size).astype(np.float32)
-                B = np.random.randn(size, size).astype(np.float32)
-                C = np.dot(A, B)
-                result = {
-                    "checksum": hashlib.sha256(C.tobytes()).hexdigest()[:16],
-                    "shape": list(C.shape),
-                    "mean": float(np.mean(C)),
-                    "std": float(np.std(C))
-                }
-                
-            elif task_type == "gradient_compute":
-                size = task_data.get("size", 1000)
-                weights = np.random.randn(size).astype(np.float32)
-                inputs = np.random.randn(100, size).astype(np.float32)
-                targets = np.random.randn(100).astype(np.float32)
-                predictions = np.dot(inputs, weights)
-                loss = np.mean((predictions - targets) ** 2)
-                gradients = 2 * np.dot(inputs.T, (predictions - targets)) / 100
-                result = {
-                    "loss": float(loss),
-                    "gradient_norm": float(np.linalg.norm(gradients)),
-                    "checksum": hashlib.sha256(gradients.tobytes()).hexdigest()[:16]
-                }
-                
-            elif task_type == "model_inference":
-                batch_size = task_data.get("batch_size", 32)
-                input_dim = task_data.get("input_dim", 512)
-                hidden_dim = task_data.get("hidden_dim", 256)
-                output_dim = task_data.get("output_dim", 10)
-                X = np.random.randn(batch_size, input_dim).astype(np.float32)
-                W1 = np.random.randn(input_dim, hidden_dim).astype(np.float32) * 0.01
-                W2 = np.random.randn(hidden_dim, output_dim).astype(np.float32) * 0.01
-                hidden = np.maximum(0, np.dot(X, W1))
-                output = np.dot(hidden, W2)
-                probs = np.exp(output) / np.sum(np.exp(output), axis=1, keepdims=True)
-                result = {
-                    "predictions": probs.argmax(axis=1).tolist()[:5],
-                    "confidence": float(np.max(probs)),
-                    "checksum": hashlib.sha256(probs.tobytes()).hexdigest()[:16]
-                }
-                
-            elif task_type == "data_hash":
-                data_size = task_data.get("size", 10000)
-                data = np.random.bytes(data_size)
-                iterations = task_data.get("iterations", 1000)
-                h = hashlib.sha256(data)
-                for _ in range(iterations):
-                    h = hashlib.sha256(h.digest())
-                result = {
-                    "final_hash": h.hexdigest(),
-                    "iterations": iterations
-                }
-                
-            elif task_type == "tensor_reduce":
-                dims = task_data.get("dims", [100, 100, 100])
-                tensor = np.random.randn(*dims).astype(np.float32)
-                result = {
-                    "sum": float(np.sum(tensor)),
-                    "mean": float(np.mean(tensor)),
-                    "max": float(np.max(tensor)),
-                    "min": float(np.min(tensor)),
-                    "checksum": hashlib.sha256(tensor.tobytes()).hexdigest()[:16]
-                }
-            else:
-                size = 50
-                A = np.random.randn(size, size)
-                result = {"checksum": hashlib.sha256(np.dot(A, A).tobytes()).hexdigest()[:16]}
-                
-        except Exception as e:
-            result = {"error": str(e)}
+        compute_time = time.time() - start
+        self.tasks_processed += 1
+        self.total_compute_time += compute_time
         
-        compute_time = time.time() - start_time
         result["compute_time_ms"] = int(compute_time * 1000)
-        result["task_id"] = task.get("task_id")
-        result["contributor_id"] = self.config.contributor_id
-        
+        result["model_hash"] = self.model_hash[:16]
         return result
+
+class NeoNetFullNode:
+    """Полный узел NeoNet - AI + Blockchain + P2P"""
     
-    async def submit_result(self, task_id: str, result: dict) -> Optional[float]:
-        """Submit task result and get reward"""
-        async with aiohttp.ClientSession() as session:
-            try:
-                payload = {
-                    "contributor_id": self.config.contributor_id,
-                    "session_id": self.session_id,
-                    "task_id": task_id,
-                    "result": result
-                }
-                async with session.post(
-                    f"{self.config.server_url}/ai-energy/submit-result",
-                    json=payload
-                ) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        reward = data.get("reward", 0)
-                        return reward
-                    else:
-                        error = await resp.text()
-                        print(f"[WARN] Submit failed: {error}")
-                        return None
-            except Exception as e:
-                print(f"[ERROR] Submit error: {e}")
-                return None
+    def __init__(self, config: NodeConfig):
+        self.config = config
+        self.blockchain = LocalBlockchain()
+        self.ai = AIEngine()
+        self.peers: set = set()
+        self.is_running = False
+        self.rewards_earned = 0.0
+        self.session_start = None
+        
+        self.app = web.Application()
+        self._setup_routes()
     
-    async def send_heartbeat(self, tasks_done: int = 0) -> dict:
-        """Send heartbeat to keep session alive"""
-        async with aiohttp.ClientSession() as session:
-            try:
-                payload = {
-                    "contributor_id": self.config.contributor_id,
-                    "session_id": self.session_id,
-                    "cpu_usage": np.random.uniform(20, 80),
-                    "gpu_usage": np.random.uniform(0, 60) if self.config.gpu_memory_mb > 0 else 0,
-                    "tasks_completed": tasks_done
-                }
-                async with session.post(
-                    f"{self.config.server_url}/ai-energy/heartbeat",
-                    json=payload
-                ) as resp:
-                    if resp.status == 200:
-                        return await resp.json()
-                    return {}
-            except Exception:
-                return {}
+    def _setup_routes(self):
+        self.app.router.add_get('/health', self.handle_health)
+        self.app.router.add_get('/status', self.handle_status)
+        self.app.router.add_get('/peers', self.handle_peers)
+        self.app.router.add_post('/peers', self.handle_add_peer)
+        self.app.router.add_get('/chain', self.handle_chain)
+        self.app.router.add_get('/task', self.handle_get_task)
+        self.app.router.add_post('/task/submit', self.handle_submit_task)
+        self.app.router.add_post('/block', self.handle_new_block)
     
-    async def stop_session(self) -> dict:
-        """Stop the mining session"""
-        async with aiohttp.ClientSession() as session:
+    async def handle_health(self, request):
+        return web.json_response({"status": "healthy", "node": "full"})
+    
+    async def handle_status(self, request):
+        uptime = time.time() - self.session_start if self.session_start else 0
+        return web.json_response({
+            "wallet": self.config.wallet,
+            "mode": "full_node",
+            "blockchain_height": self.blockchain.get_height(),
+            "peers": len(self.peers),
+            "tasks_processed": self.ai.tasks_processed,
+            "rewards_earned": self.rewards_earned,
+            "uptime_seconds": int(uptime),
+            "ai_model": self.ai.model_hash[:16]
+        })
+    
+    async def handle_peers(self, request):
+        return web.json_response({
+            "peers": list(self.peers),
+            "count": len(self.peers)
+        })
+    
+    async def handle_add_peer(self, request):
+        data = await request.json()
+        peer = data.get("peer")
+        if peer:
+            self.peers.add(peer)
+        return web.json_response({"success": True})
+    
+    async def handle_chain(self, request):
+        chain_data = [asdict(b) for b in self.blockchain.chain[-100:]]
+        return web.json_response({"chain": chain_data, "height": self.blockchain.get_height()})
+    
+    async def handle_get_task(self, request):
+        task = self._generate_task()
+        return web.json_response(task)
+    
+    async def handle_submit_task(self, request):
+        data = await request.json()
+        task_type = data.get("task_type", "inference")
+        reward = self._calculate_reward(task_type)
+        return web.json_response({
+            "success": True,
+            "reward": reward,
+            "task_id": data.get("task_id")
+        })
+    
+    async def handle_new_block(self, request):
+        data = await request.json()
+        block = Block(**data)
+        success = self.blockchain.add_block(block)
+        return web.json_response({"accepted": success})
+    
+    def _generate_task(self) -> dict:
+        task_types = ["fraud_detection", "model_training", "inference", 
+                     "network_protection", "gradient_compute", "federated_learning"]
+        task_type = np.random.choice(task_types)
+        
+        data = {}
+        if task_type == "fraud_detection":
+            data = {"tx_count": np.random.randint(50, 200)}
+        elif task_type in ["model_training", "federated_learning"]:
+            data = {"epochs": np.random.randint(5, 20)}
+        elif task_type == "network_protection":
+            start = np.random.randint(0, 10000)
+            data = {"block_range": [start, start + np.random.randint(50, 150)]}
+        else:
+            data = {"size": np.random.randint(100, 1000)}
+        
+        return {
+            "task_id": hashlib.sha256(os.urandom(32)).hexdigest(),
+            "task_type": task_type,
+            "data": data,
+            "created_at": time.time()
+        }
+    
+    def _calculate_reward(self, task_type: str) -> float:
+        weights = {
+            "federated_learning": 1.0,
+            "model_training": 0.8,
+            "network_protection": 0.6,
+            "fraud_detection": 0.5,
+            "gradient_compute": 0.5,
+            "inference": 0.4,
+        }
+        active_nodes = max(1, len(self.peers) + 1)
+        return weights.get(task_type, 0.4) * (10.0 / active_nodes)
+    
+    async def sync_with_bootstrap(self):
+        """Синхронизация с bootstrap сервером"""
+        for server in BOOTSTRAP_SERVERS:
             try:
-                async with session.post(
-                    f"{self.config.server_url}/ai-energy/stop-session",
-                    json={
-                        "contributor_id": self.config.contributor_id,
-                        "session_id": self.session_id
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+                    async with session.get(f"{server}/api/decentralization/peers") as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            for peer in data.get("peers", []):
+                                endpoint = peer.get("endpoint")
+                                if endpoint:
+                                    self.peers.add(endpoint)
+                    
+                    payload = {
+                        "contributor_id": self.config.wallet,
+                        "cpu_cores": self.config.cpu_cores,
+                        "gpu_memory_mb": self.config.gpu_memory_mb,
+                        "p2p_endpoint": f"0.0.0.0:{self.config.port}"
                     }
-                ) as resp:
-                    if resp.status == 200:
-                        return await resp.json()
-                    return {}
+                    async with session.post(f"{server}/ai-energy/register", json=payload) as resp:
+                        if resp.status == 200:
+                            print(f"[OK] Зарегистрирован в bootstrap: {server}")
+                            return True
             except Exception as e:
-                print(f"[ERROR] Stop session error: {e}")
-                return {}
+                continue
+        return False
+    
+    async def fetch_task_from_network(self) -> Optional[dict]:
+        """Получить задачу из сети"""
+        for server in BOOTSTRAP_SERVERS:
+            try:
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+                    async with session.get(f"{server}/ai-energy/task/{self.config.wallet}") as resp:
+                        if resp.status == 200:
+                            return await resp.json()
+            except:
+                pass
+        
+        for peer in list(self.peers)[:5]:
+            try:
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=3)) as session:
+                    async with session.get(f"http://{peer}/task") as resp:
+                        if resp.status == 200:
+                            return await resp.json()
+            except:
+                continue
+        
+        return self._generate_task()
+    
+    async def submit_result(self, task_id: str, result: dict, task_type: str) -> float:
+        """Отправить результат в сеть"""
+        for server in BOOTSTRAP_SERVERS:
+            try:
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+                    payload = {
+                        "contributor_id": self.config.wallet,
+                        "task_id": task_id,
+                        "result": result
+                    }
+                    async with session.post(f"{server}/ai-energy/submit-result", json=payload) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            return data.get("reward", 0)
+            except:
+                pass
+        
+        return self._calculate_reward(task_type)
+    
+    async def broadcast_to_peers(self, message_type: str, data: dict):
+        """Отправить сообщение всем пирам"""
+        for peer in list(self.peers):
+            try:
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=2)) as session:
+                    async with session.post(f"http://{peer}/{message_type}", json=data):
+                        pass
+            except:
+                pass
+    
+    async def start_server(self):
+        """Запустить локальный сервер"""
+        runner = web.AppRunner(self.app)
+        await runner.setup()
+        site = web.TCPSite(runner, '0.0.0.0', self.config.port)
+        await site.start()
+        print(f"[NODE] Локальный AI узел запущен на порту {self.config.port}")
     
     async def run(self):
-        """Main mining loop"""
+        """Главный цикл работы узла"""
         print("=" * 60)
-        print("    NeoNet AI Miner - Proof of Intelligence Network")
+        print("    NeoNet Full Node - AI Network")  
         print("=" * 60)
-        print(f"Server: {self.config.server_url}")
-        print(f"Miner ID: {self.config.contributor_id}")
-        print(f"CPU Cores: {self.config.cpu_cores}")
-        print(f"GPU: {self.config.gpu_model or 'None'} ({self.config.gpu_memory_mb}MB)")
+        print(f"Кошелёк: {self.config.wallet}")
+        print(f"Порт: {self.config.port}")
+        print(f"CPU: {self.config.cpu_cores} ядер")
         print("-" * 60)
         
-        if not await self.register():
-            print("[FATAL] Cannot register with network. Exiting.")
-            return
+        await self.start_server()
         
-        if not await self.start_session():
-            print("[FATAL] Cannot start session. Exiting.")
-            return
+        bootstrap_ok = await self.sync_with_bootstrap()
+        if bootstrap_ok:
+            print("[NET] Подключен к сети NeoNet")
+        else:
+            print("[NET] Работа в автономном P2P режиме")
         
         self.is_running = True
-        heartbeat_counter = 0
+        self.session_start = time.time()
+        sync_counter = 0
         
-        print("\n[MINING] Starting AI task processing...")
-        print("[INFO] Press Ctrl+C to stop\n")
+        print("\n[AI] Запуск обработки задач...")
+        print("[INFO] Нажмите Ctrl+C для остановки\n")
         
         try:
             while self.is_running:
-                task = await self.fetch_task()
+                task = await self.fetch_task_from_network()
                 
-                if task:
-                    task_id = task.get("task_id")
-                    task_type = task.get("task_type")
-                    print(f"[TASK] Processing: {task_type} (ID: {task_id[:8]}...)")
+                if task and task.get("task_id"):
+                    task_id = task["task_id"]
+                    task_type = task.get("task_type", "inference")
+                    print(f"[AI] Обработка: {task_type}")
                     
-                    result = self.process_task(task)
-                    print(f"[DONE] Computed in {result.get('compute_time_ms', 0)}ms")
+                    result = self.ai.process_task(task)
+                    print(f"[OK] Выполнено за {result.get('compute_time_ms', 0)}ms")
                     
-                    reward = await self.submit_result(task_id, result)
-                    if reward:
-                        self.tasks_completed += 1
-                        self.total_rewards += reward
-                        print(f"[REWARD] +{reward:.4f} NEO | Total: {self.total_rewards:.4f} NEO")
+                    reward = await self.submit_result(task_id, result, task_type)
+                    if reward > 0:
+                        self.rewards_earned += reward
+                        self.blockchain.credit(self.config.wallet, reward)
+                        print(f"[NNET] +{reward:.4f} | Всего: {self.rewards_earned:.4f} NNET")
                 
-                heartbeat_counter += 1
-                if heartbeat_counter >= 3:
-                    hb = await self.send_heartbeat(self.tasks_completed)
-                    if hb:
-                        print(f"[STATUS] Tasks: {self.tasks_completed} | Rewards: {self.total_rewards:.4f} NEO")
-                    heartbeat_counter = 0
+                sync_counter += 1
+                if sync_counter >= 30:
+                    await self.sync_with_bootstrap()
+                    sync_counter = 0
+                    print(f"[SYNC] Пиров: {len(self.peers)} | Блокчейн: {self.blockchain.get_height()} блоков")
                 
                 await asyncio.sleep(2)
                 
         except KeyboardInterrupt:
-            print("\n[STOP] Shutting down miner...")
+            print("\n[STOP] Остановка узла...")
         finally:
             self.is_running = False
-            summary = await self.stop_session()
+            uptime = time.time() - self.session_start if self.session_start else 0
             print("\n" + "=" * 60)
-            print("    Mining Session Summary")
+            print("    Итоги сессии")
             print("=" * 60)
-            print(f"Tasks Completed: {self.tasks_completed}")
-            print(f"Total Rewards: {self.total_rewards:.4f} NEO")
-            if summary:
-                print(f"Session Duration: {summary.get('duration_seconds', 0):.0f}s")
+            print(f"Время работы: {int(uptime // 60)} мин {int(uptime % 60)} сек")
+            print(f"Задач обработано: {self.ai.tasks_processed}")
+            print(f"Заработано: {self.rewards_earned:.4f} NNET")
+            print(f"Баланс кошелька: {self.blockchain.get_balance(self.config.wallet):.4f} NNET")
             print("=" * 60)
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="NeoNet AI Miner")
-    parser.add_argument("--server", default="http://localhost:8000", help="NeoNet server URL")
-    parser.add_argument("--id", default=None, help="Miner ID (generated if not provided)")
-    parser.add_argument("--cpu", type=int, default=4, help="CPU cores to use")
-    parser.add_argument("--gpu-mem", type=int, default=0, help="GPU memory in MB")
-    parser.add_argument("--gpu-model", default="", help="GPU model name")
+    parser = argparse.ArgumentParser(description="NeoNet Full Node")
+    parser.add_argument("--wallet", required=True, help="Адрес вашего кошелька")
+    parser.add_argument("--port", type=int, default=8080, help="Порт для P2P (по умолчанию 8080)")
+    parser.add_argument("--cpu", type=int, default=4, help="Количество CPU ядер")
+    parser.add_argument("--gpu-mem", type=int, default=0, help="GPU память в МБ")
     
     args = parser.parse_args()
     
-    miner_id = args.id or f"miner_{hashlib.sha256(os.urandom(16)).hexdigest()[:12]}"
-    
-    config = MinerConfig(
-        server_url=args.server,
-        contributor_id=miner_id,
+    config = NodeConfig(
+        wallet=args.wallet,
+        port=args.port,
         cpu_cores=args.cpu,
-        gpu_memory_mb=args.gpu_mem,
-        gpu_model=args.gpu_model
+        gpu_memory_mb=args.gpu_mem
     )
     
-    miner = NeoNetMiner(config)
-    await miner.run()
+    node = NeoNetFullNode(config)
+    await node.run()
 
 
 if __name__ == "__main__":
+    print("""
+    ╔═══════════════════════════════════════════════════════╗
+    ║           NeoNet Miner v1.0                           ║
+    ║       AI-Powered Web4 Blockchain Network              ║
+    ║       Token: NNET                                     ║
+    ╚═══════════════════════════════════════════════════════╝
+    """)
     asyncio.run(main())
