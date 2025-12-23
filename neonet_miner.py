@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 """
 NeoNet Miner - All-in-One
-Запустите этот скрипт и ваш компьютер станет частью сети NeoNet.
+Run this script and your computer becomes part of the NeoNet network.
 
-AI запускается локально и:
-- Обрабатывает AI задачи
-- Держит копию блокчейна
-- Участвует в консенсусе
-- Получает награды в NNET
+The AI runs locally on your machine and:
+- Processes AI tasks
+- Maintains a local copy of the blockchain
+- Participates in consensus
+- Earns NNET token rewards
 
-Использование:
+Usage:
+    pip install aiohttp numpy
     python neonet_miner.py --wallet neo1your_wallet
+
+Options:
+    --wallet    Your wallet address for NNET rewards (required)
+    --port      P2P port (default: 8080)
+    --cpu       Number of CPU cores to use (default: 4)
+    --gpu-mem   GPU memory in MB (default: 0 = CPU only)
 """
 import asyncio
 import aiohttp
