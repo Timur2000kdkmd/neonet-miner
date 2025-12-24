@@ -1,112 +1,223 @@
-# NeoNet AI Miner
+# NeoNet Miner Client (NNET)
 
-Connect your computer to the NeoNet network and earn NEO tokens by providing AI computing power.
+One-Click AI Mining for the NeoNet Web4 Blockchain.
 
-## Quick Start
+## Dynamic Rewards System
 
-### 1. Install Dependencies
+NeoNet uses **dynamic rewards** that adjust based on active miners:
 
-```bash
-pip install -r requirements.txt
+```
+Formula: Reward = Task_Weight × (Block_Budget / Active_Miners)
+
+Block_Budget = 10.0 NNET (fixed "pie" per block)
+Task_Weight = 0.30 to 1.00 (based on task difficulty)
+
+Examples:
+- 1 miner:    federated_learning = 10.0 NNET (max)
+- 10 miners:  federated_learning = 1.0 NNET
+- 100 miners: federated_learning = 0.1 NNET
+- 1000 miners: federated_learning = 0.01 NNET
+- 1M miners:  federated_learning = 0.00001 NNET
 ```
 
-### 2. Run the Miner
+**Why dynamic?** Prevents hyperinflation with millions of miners while rewarding early adopters.
+
+## One-Click GUI Miner (Recommended)
+
+### Windows/Mac/Linux
+
+1. Install Python 3.8+
+2. Install dependencies:
+   ```bash
+   pip install aiohttp numpy
+   ```
+3. Run the GUI miner:
+   ```bash
+   python neonet_miner_gui.py
+   ```
+4. Enter your wallet address (neo1... or 0x...)
+5. Click **START MINING**
+
+### Build Standalone .exe (Windows)
 
 ```bash
-python neonet_miner.py --server https://YOUR_NEONET_SERVER
+pip install pyinstaller
+pyinstaller --onefile --noconsole --name NeoNetMiner neonet_miner_gui.py
 ```
 
-### Command Line Options
+The executable will be in the `dist/` folder.
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--server` | NeoNet server URL | http://localhost:8000 |
-| `--id` | Your miner ID (auto-generated if not set) | random |
-| `--cpu` | Number of CPU cores to use | 4 |
-| `--gpu-mem` | GPU memory in MB (0 = no GPU) | 0 |
-| `--gpu-model` | GPU model name | "" |
+## Command Line Miner (Advanced)
 
-### Examples
+For servers and advanced users:
 
-**Basic CPU Mining:**
 ```bash
-python neonet_miner.py --server https://neonet.example.com --cpu 8
+python neonet_miner.py --wallet neo1abc123... --server https://neonetainetwork.com
 ```
 
-**GPU Mining (NVIDIA):**
-```bash
-python neonet_miner.py --server https://neonet.example.com --gpu-mem 8192 --gpu-model "RTX 4090"
-```
+### Options
 
-**Custom Miner ID:**
-```bash
-python neonet_miner.py --server https://neonet.example.com --id my_miner_001
-```
-
-## How It Works
-
-1. **Register** - Your miner connects to NeoNet and registers its hardware specs
-2. **Start Session** - A mining session begins and tasks are assigned
-3. **Process Tasks** - Your computer processes real AI workloads:
-   - Matrix multiplication for neural networks
-   - Gradient computation for model training
-   - Model inference for fraud detection
-   - Data hashing for blockchain verification
-   - Tensor reduction for model aggregation
-4. **Earn Rewards** - Each completed task earns you NEO tokens
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--wallet` | Your wallet address | Required |
+| `--server` | NeoNet server URL | Auto-detect |
+| `--cpu` | CPU cores to use | Auto-detect |
+| `--gpu-memory` | GPU memory in MB | 0 |
 
 ## Task Types & Rewards
 
-| Task Type | Description | Reward |
-|-----------|-------------|--------|
-| `matrix_multiply` | Neural network layer computation | 0.05 NEO |
-| `gradient_compute` | Model training gradients | 0.08 NEO |
-| `model_inference` | Run fraud detection model | 0.06 NEO |
-| `data_hash` | Hash blockchain data | 0.03 NEO |
-| `tensor_reduce` | Aggregate model data | 0.04 NEO |
+Rewards are calculated dynamically: `Task_Weight × (10.0 / Active_Miners)`
 
-## Sample Output
+| Task Type | Weight | 1 Miner | 10 Miners | 100 Miners |
+|-----------|--------|---------|-----------|------------|
+| federated_learning | 1.00x | 10.00 | 1.00 | 0.10 |
+| model_training | 0.80x | 8.00 | 0.80 | 0.08 |
+| network_protection | 0.60x | 6.00 | 0.60 | 0.06 |
+| fraud_detection | 0.50x | 5.00 | 0.50 | 0.05 |
+| gradient_compute | 0.50x | 5.00 | 0.50 | 0.05 |
+| inference | 0.40x | 4.00 | 0.40 | 0.04 |
+| data_validation | 0.30x | 3.00 | 0.30 | 0.03 |
+| matrix_ops | 0.30x | 3.00 | 0.30 | 0.03 |
 
+## Hardware Requirements
+
+| Level | Requirements | Typical Tasks |
+|-------|--------------|---------------|
+| Minimum | 1 CPU, No GPU | fraud_detection, inference, data_validation |
+| Standard | 4 CPU, 2GB GPU | model_training, gradient_compute |
+| High | 8+ CPU, 8GB+ GPU | federated_learning |
+
+Any computer can mine! The network assigns appropriate tasks.
+
+## How It Works
+
+1. **Register** - Your wallet is registered with the network
+2. **Start Session** - Begin receiving AI tasks
+3. **Process Tasks** - Your computer performs AI computations
+4. **Earn Rewards** - NNET tokens are minted to your wallet
+
+All rewards are **minted as new tokens**, balanced by transaction fee burning (EIP-1559 style).
+
+## Progressive Decentralization
+
+As more miners join, the network becomes more decentralized:
+
+| Miners | Network State | Server Load | Miner Load |
+|--------|---------------|-------------|------------|
+| 0-10 | Bootstrap | 100% | 0% |
+| 10-100 | Transition | 50% | 50% |
+| 100-1000 | Distributed | 10% | 90% |
+| 1000+ | Decentralized | 0% | 100% |
+
+### Automatic Server Shutdown
+
+When the network reaches **1000+ active miners**, the central bootstrap server will **automatically shut down**:
+
+1. Network reaches 1000+ miners
+2. System waits 5 minutes for stability confirmation
+3. Warning message is logged
+4. After 60 seconds grace period, server shuts down
+5. Network continues running entirely on P2P miner nodes
+
+**API Endpoints:**
+- `GET /api/decentralization/status` - Check current phase
+- `GET /api/decentralization/auto-shutdown/status` - Check shutdown conditions
+- `POST /api/decentralization/auto-shutdown/disable` - Disable auto-shutdown (manual control)
+
+Eventually, the network runs entirely on miner nodes!
+
+## Full Node (Рекомендуется)
+
+**Один скрипт = полный узел сети.** AI запускается на вашем компьютере и держит сеть:
+
+```bash
+python neonet_full_node.py --wallet neo1your_wallet
 ```
-============================================================
-    NeoNet AI Miner - Proof of Intelligence Network
-============================================================
-Server: https://neonet.example.com
-Miner ID: miner_a1b2c3d4e5f6
-CPU Cores: 8
-GPU: RTX 4090 (8192MB)
-------------------------------------------------------------
-[OK] Registered with NeoNet: {'success': True, ...}
-[OK] Session started: 550e8400-e29b-41d4-a716-446655440000
 
-[MINING] Starting AI task processing...
-[INFO] Press Ctrl+C to stop
+### Что делает Full Node:
+- **AI Engine** — обрабатывает все типы задач локально
+- **Blockchain** — хранит локальную копию блокчейна
+- **P2P Server** — принимает подключения от других узлов
+- **Rewards** — получает NNET за работу
 
-[TASK] Processing: gradient_compute (ID: 7a8b9c0d...)
-[DONE] Computed in 156ms
-[REWARD] +0.0800 NEO | Total: 0.0800 NEO
+### Опции
 
-[TASK] Processing: matrix_multiply (ID: 1e2f3a4b...)
-[DONE] Computed in 89ms
-[REWARD] +0.0500 NEO | Total: 0.1300 NEO
+| Флаг | Описание | По умолчанию |
+|------|----------|--------------|
+| `--wallet` | Адрес кошелька | Обязательно |
+| `--port` | Порт для P2P | 8080 |
+| `--cpu` | Ядер CPU | 4 |
+| `--gpu-mem` | GPU память (МБ) | 0 |
 
-[STATUS] Tasks: 2 | Rewards: 0.1300 NEO
+### Пример запуска
+
+```bash
+# Базовый запуск
+python neonet_full_node.py --wallet neo1abc123
+
+# С указанием порта и ресурсов
+python neonet_full_node.py --wallet neo1abc123 --port 9000 --cpu 8 --gpu-mem 4096
 ```
 
-## API Endpoints Used
+После запуска ваш компьютер:
+1. Подключается к сети NeoNet
+2. Получает задачи от сети или генерирует свои
+3. AI обрабатывает задачи
+4. Получает награды в NNET
 
-The miner client communicates with these NeoNet endpoints:
+---
 
-- `POST /ai-energy/register` - Register as contributor
-- `POST /ai-energy/start-session` - Start mining session
-- `GET /ai-energy/task/{contributor_id}` - Fetch task to process
-- `POST /ai-energy/submit-result` - Submit completed task
-- `POST /ai-energy/heartbeat` - Keep session alive
-- `POST /ai-energy/stop-session` - End session
+## P2P Miner (Альтернативный режим)
+
+Если нужен только майнинг без полного узла:
+
+### Quick Start
+
+```bash
+python neonet_p2p_miner.py --wallet neo1your_wallet_address
+```
+
+### P2P Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--wallet` | Your wallet address | Required |
+| `--port` | P2P listen port | 9876 |
+| `--cpu` | CPU cores to use | 4 |
+| `--gpu-mem` | GPU memory in MB | 0 |
+| `--mode` | Network mode | hybrid |
+| `--bootstrap` | Additional bootstrap servers | - |
+
+### Network Modes
+
+| Mode | Description |
+|------|-------------|
+| `hybrid` | Auto-switch between bootstrap and P2P (recommended) |
+| `bootstrap` | Connect only to central server |
+| `p2p` | Pure P2P mode, no central server |
+
+### How P2P Mode Works
+
+1. **Peer Discovery** - Finds other miners via bootstrap or known peers
+2. **Local Node** - Runs local server on `--port` for other peers
+3. **Task Distribution** - Gets/sends tasks from/to peers
+4. **Automatic Fallback** - Switches to P2P when bootstrap unavailable
+
+### Example: Pure P2P Mode
+
+```bash
+python neonet_p2p_miner.py --wallet neo1abc123 --mode p2p --port 9876
+```
+
+### Example: Add Custom Bootstrap
+
+```bash
+python neonet_p2p_miner.py --wallet neo1abc123 --bootstrap http://my-node.com:8000
+```
 
 ## Running as a Service (Linux)
 
-Create a systemd service file `/etc/systemd/system/neonet-miner.service`:
+Create `/etc/systemd/system/neonet-miner.service`:
 
 ```ini
 [Unit]
@@ -117,7 +228,7 @@ After=network.target
 Type=simple
 User=yourusername
 WorkingDirectory=/path/to/miner-client
-ExecStart=/usr/bin/python3 neonet_miner.py --server https://neonet.example.com --cpu 8
+ExecStart=/usr/bin/python3 neonet_miner.py --wallet your_wallet --server https://neonetainetwork.com
 Restart=always
 RestartSec=10
 
@@ -125,47 +236,20 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
-Then enable and start:
-
+Then:
 ```bash
 sudo systemctl enable neonet-miner
 sudo systemctl start neonet-miner
 ```
 
-## Docker
+## Links
 
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY neonet_miner.py .
-CMD ["python", "neonet_miner.py", "--server", "https://neonet.example.com"]
-```
+- Website: https://neonetainetwork.com
+- Documentation: https://neonetainetwork.info
+- GitHub: https://github.com/neonetainetwork/NeoNet-Blockchain
+- Discussions: https://github.com/neonetainetwork/NeoNet-Blockchain/discussions
+- Issues: https://github.com/neonetainetwork/NeoNet-Blockchain/issues
 
-Build and run:
+## License
 
-```bash
-docker build -t neonet-miner .
-docker run -d neonet-miner
-```
-
-## Troubleshooting
-
-**Cannot connect to server:**
-- Check that the server URL is correct
-- Ensure your firewall allows outbound connections
-
-**Session keeps dropping:**
-- Unstable internet connection
-- Server may be overloaded, try again later
-
-**Low rewards:**
-- Consider using a GPU for faster processing
-- Increase CPU cores
-
-## Support
-
-- GitHub: https://github.com/NeoNet-Blockchain/miner-client
-- Discord: https://discord.gg/neonet
-- Docs: https://docs.neonet.network
+MIT License - NeoNet AI Network 2025
