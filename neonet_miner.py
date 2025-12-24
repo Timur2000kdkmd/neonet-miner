@@ -89,40 +89,93 @@ class LocalBlockchain:
         return len(self.chain)
 
 class AIEngine:
-    """Local AI engine for task processing"""
+    """Local AI engine for task processing - supports CPU and all GPUs"""
     
-    def __init__(self):
+    def __init__(self, gpu_memory_mb: int = 0):
         self.model_hash = hashlib.sha256(b"neonet_ai_v1").hexdigest()
         self.tasks_processed = 0
         self.total_compute_time = 0.0
+        self.gpu_memory_mb = gpu_memory_mb
+        self.device = "cpu"
+        self.backend = "numpy"
+        self.torch = None
+        
+        if gpu_memory_mb > 0:
+            self._init_gpu()
+    
+    def _init_gpu(self):
+        """Initialize GPU backend - supports NVIDIA, AMD, Apple, Intel"""
+        try:
+            import torch
+            self.torch = torch
+            
+            if torch.cuda.is_available():
+                self.device = "cuda"
+                self.backend = "nvidia"
+                gpu_name = torch.cuda.get_device_name(0)
+                print(f"[GPU] NVIDIA: {gpu_name}")
+            elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+                self.device = "mps"
+                self.backend = "apple"
+                print("[GPU] Apple Metal (M1/M2/M3)")
+            elif hasattr(torch, 'hip') and torch.hip.is_available():
+                self.device = "hip"
+                self.backend = "amd"
+                print("[GPU] AMD ROCm")
+            else:
+                try:
+                    import intel_extension_for_pytorch as ipex
+                    self.device = "xpu"
+                    self.backend = "intel"
+                    print("[GPU] Intel Arc/Xe")
+                except ImportError:
+                    self.device = "cpu"
+                    self.backend = "pytorch_cpu"
+                    print("[CPU] PyTorch CPU (GPU not detected)")
+        except ImportError:
+            self.device = "cpu"
+            self.backend = "numpy"
+            print("[CPU] NumPy (install torch for GPU)")
+    
+    def _compute(self, shape: tuple) -> np.ndarray:
+        """Run computation on best available device"""
+        if self.torch and self.device != "cpu":
+            tensor = self.torch.randn(*shape, device=self.device)
+            result = tensor.cpu().numpy()
+            return result.astype(np.float32)
+        return np.random.randn(*shape).astype(np.float32)
     
     def process_fraud_detection(self, tx_count: int) -> dict:
-        transactions = np.random.randn(tx_count, 32).astype(np.float32)
+        transactions = self._compute((tx_count, 32))
         scores = np.abs(transactions).mean(axis=1)
         fraud_indices = np.where(scores > 0.8)[0]
         return {
             "results_hash": hashlib.sha256(scores.tobytes()).hexdigest(),
             "fraud_count": len(fraud_indices),
-            "analyzed": tx_count
+            "analyzed": tx_count,
+            "device": self.backend
         }
     
     def process_model_training(self, epochs: int) -> dict:
-        weights = np.random.randn(256, 128).astype(np.float32)
+        weights = self._compute((256, 128))
         for _ in range(epochs):
-            grad = np.random.randn(256, 128).astype(np.float32) * 0.01
+            grad = self._compute((256, 128)) * 0.01
             weights -= grad
         return {
             "weights_hash": hashlib.sha256(weights.tobytes()).hexdigest(),
             "epochs_completed": epochs,
-            "final_loss": float(np.abs(weights).mean())
+            "final_loss": float(np.abs(weights).mean()),
+            "device": self.backend
         }
     
     def process_inference(self, data_size: int) -> dict:
-        data = np.random.randn(data_size, 64).astype(np.float32)
-        output = np.tanh(data @ np.random.randn(64, 32).astype(np.float32))
+        data = self._compute((data_size, 64))
+        weight = self._compute((64, 32))
+        output = np.tanh(data @ weight)
         return {
             "output_hash": hashlib.sha256(output.tobytes()).hexdigest(),
-            "processed": data_size
+            "processed": data_size,
+            "device": self.backend
         }
     
     def process_task(self, task: dict) -> dict:
@@ -161,7 +214,7 @@ class NeoNetFullNode:
     def __init__(self, config: NodeConfig):
         self.config = config
         self.blockchain = LocalBlockchain()
-        self.ai = AIEngine()
+        self.ai = AIEngine(gpu_memory_mb=config.gpu_memory_mb)
         self.peers: set = set()
         self.is_running = False
         self.rewards_earned = 0.0
