@@ -340,11 +340,11 @@ class NeoNetFullNode:
                                     self.peers.add(endpoint)
                             # Show decentralization progress
                             phase = data.get("phase", "bootstrap")
-                            replit_load = data.get("replit_load", 100)
+                            bootstrap_load = data.get("bootstrap_load", 100)
                             miner_load = data.get("miner_load", 0)
                             if phase != "bootstrap":
                                 print(f"[P2P] Network phase: {phase.upper()}")
-                                print(f"[P2P] Load: Replit {replit_load:.0f}% | Miners {miner_load:.0f}%")
+                                print(f"[P2P] Load: Bootstrap {bootstrap_load:.0f}% | Miners {miner_load:.0f}%")
                     
                     # Register as energy provider
                     payload = {
